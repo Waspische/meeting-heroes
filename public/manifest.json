@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Meeting Heroes - Sauve tes réunions",
+  "version": "1.1.0",
+  "description": "Évaluez vos réunions Google Meet en 10 secondes : notation 100% anonyme, consensus d'équipe et zéro perte de temps.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Meeting Heroes",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "*://meet.google.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://meet.google.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ]
+}

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue dans Meeting Heroes 🦸</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: rgba(245, 158, 11, 0.35);
+      --gold: #f59e0b;
+      --gold-glow: rgba(245, 158, 11, 0.2);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --green: #10b981;
+      --blue: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 10%, #1e1b4b 0%, var(--bg-dark) 60%);
+      color: var(--text-main);
+      font-family: 'Google Sans', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 780px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hero-badge {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 2px solid var(--gold);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 35px var(--gold-glow);
+      position: relative;
+    }
+
+    .hero-badge img {
+      width: 50px;
+      height: 50px;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 540px;
+      line-height: 1.5;
+    }
+
+    /* Manifeste de Bienveillance (Pacte de Confiance) */
+    .pact-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(16, 185, 129, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pact-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, #10b981, #059669);
+    }
+
+    .pact-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .pact-icon {
+      font-size: 24px;
+      color: #10b981;
+    }
+
+    .pact-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+    }
+
+    .pact-text {
+      font-size: 14px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .pact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .pact-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .pact-item-icon {
+      font-size: 18px;
+      color: #10b981;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .pact-item-content {
+      font-size: 13px;
+      line-height: 1.4;
+      color: #e2e8f0;
+    }
+
+    .pact-item-content strong {
+      display: block;
+      color: #ffffff;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* 3-Step Guide */
+    .steps-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .steps-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--card-border);
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .step-heading {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #f1f5f9;
+      margin-top: auto;
+      align-self: flex-start;
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(245, 158, 11, 0.45);
+    }
+
+    .btn-secondary {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: underline;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .btn-secondary:hover {
+      opacity: 1;
+      color: #ffffff;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="hero-badge">
+        <img src="icon.svg" alt="Meeting Heroes">
+      </div>
+      <h1 class="title" id="ui-title">Bienvenue dans Meeting Heroes !</h1>
+      <p class="subtitle" id="ui-subtitle">
+        L’extension bienveillante conçue pour libérer le temps de l’équipe et rendre chaque réunion utile.
+      </p>
+    </header>
+
+    <!-- Esprit de l'application & Anti-Flicage (Central) -->
+    <section class="pact-card" aria-labelledby="pact-heading">
+      <div class="pact-header">
+        <span class="material-icons-outlined pact-icon" aria-hidden="true">spa</span>
+        <h2 class="pact-title" id="pact-heading">L’esprit de l’application : s’améliorer, pas juger 🤝</h2>
+      </div>
+      <p class="pact-text" id="pact-desc">
+        L’unique objectif est d’<strong>aider chaque organisateur à progresser</strong> et à rendre ses prochaines réunions 2x plus efficaces grâce à des retours sincères et bienveillants.
+      </p>
+
+      <div class="pact-grid">
+        <div class="pact-item">
+          <span class="material-icons-outlined pact-item-icon" aria-hidden="true">visibility_off</span>
+          <div class="pact-item-content">
+            <strong id="pact-item1-title">Zéro statistique globale</strong>
+            <span id="pact-item1-desc">Aucun classement d’entreprise, aucun tableau d’honneur, aucun reporting managérial.</span>
+          </div>
+        </div>
+
+        <div class="pact-item">
+          <span class="material-icons-outlined pact-item-icon" aria-hidden="true">lock</span>
+          <div class="pact-item-content">
+            <strong id="pact-item2-title">Anonymat total</strong>
+            <span id="pact-item2-desc">Zéro nom, zéro email, zéro IP. L’organisateur ne saura jamais qui a donné quel avis.</span>
+          </div>
+        </div>
+
+        <div class="pact-item">
+          <span class="material-icons-outlined pact-item-icon" aria-hidden="true">tips_and_updates</span>
+          <div class="pact-item-content">
+            <strong id="pact-item3-title">Un coup de pouce constructif</strong>
+            <span id="pact-item3-desc">Les retours servent uniquement à ajuster le timing, le format ou l'ordre du jour.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Steps -->
+    <section class="steps-section" aria-labelledby="steps-heading">
+      <h2 class="steps-title" id="steps-heading">Comment ça marche ? En 3 étapes simples</h2>
+      <div class="steps-grid">
+        <!-- Step 1 -->
+        <article class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-heading" id="step1-title">Épingle l’icône dans Chrome</h3>
+          <p class="step-desc" id="step1-desc">
+            Clique sur le puzzle <strong>🧩</strong> en haut à droite de Chrome, puis clique sur l’épingle bleue à côté de Meeting Heroes.
+          </p>
+          <div class="step-badge">
+            <span>🧩</span> <span id="step1-badge">Extensions → Épingler</span>
+          </div>
+        </article>
+
+        <!-- Step 2 -->
+        <article class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-heading" id="step2-title">Rejoins un Google Meet</h3>
+          <p class="step-desc" id="step2-desc">
+            Le bouton doré <strong>⚡ Donner mon super-avis</strong> apparaîtra tout seul dans ta réunion, sans aucun rafraîchissement.
+          </p>
+          <div class="step-badge">
+            <span>⚡</span> <span id="step2-badge">Intégration automatique</span>
+          </div>
+        </article>
+
+        <!-- Step 3 -->
+        <article class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-heading" id="step3-title">10 secondes en fin d’appel</h3>
+          <p class="step-desc" id="step3-desc">
+            Donne une note et choisis un critère (timing, ordre du jour...) pour sauver le temps de toute l'équipe.
+          </p>
+          <div class="step-badge">
+            <span>⭐</span> <span id="step3-badge">Rapide & Bienveillant</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <div class="actions">
+      <a href="https://meet.google.com" target="_blank" rel="noopener noreferrer" class="btn-primary" id="btn-meet">
+        <span class="material-icons-outlined" aria-hidden="true">video_call</span>
+        <span id="btn-meet-text">Accéder à Google Meet 🚀</span>
+      </a>
+      <button type="button" class="btn-secondary" id="btn-close">
+        Fermer cet onglet
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      Meeting Heroes • 100% Anonyme & Conforme RGPD • Conçu avec bienveillance
+    </footer>
+  </main>
+
+  <script type="module" src="/src/welcome.ts"></script>
+</body>
+</html>
