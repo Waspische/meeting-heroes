@@ -53,6 +53,13 @@ describe('Integration Test: RatingForm Submission & Validation Flow', () => {
     const toggleDetails = screen.getByRole('button', { name: new RegExp(t.missionDetailsToggle.slice(0, 10), 'i') });
     fireEvent.click(toggleDetails);
 
+    // Vérifie que les titres des sections de critères sont bien affichés
+    expect(screen.getByText('Durée')).toBeDefined();
+    expect(screen.getByText('Récurrence')).toBeDefined();
+    expect(screen.getByText('Ordre du jour')).toBeDefined();
+    expect(screen.getByText('Efficacité')).toBeDefined();
+    expect(screen.getByText('Format')).toBeDefined();
+
     // 4. Select criteria chips
     const timingChip = screen.getByRole('radio', { name: new RegExp(t.critDuration.perfect, 'i') });
     fireEvent.click(timingChip);

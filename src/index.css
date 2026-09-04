@@ -386,17 +386,25 @@ textarea.google-textarea:focus {
   border-top: 1px dashed var(--border);
 }
 
+fieldset.checklist-group,
 .checklist-group {
+  border: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+legend.checklist-group-title,
 .checklist-group-title {
+  padding: 0;
+  margin: 0 0 4px 0;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.2px;
 }
 
 .checklist-options {

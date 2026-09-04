@@ -308,6 +308,7 @@ export function RatingForm({ activeMeeting, onSubmit, isSubmitted, onClose, onCo
 
           {CRITERIA_SECTIONS.map(({ key, label, options }) => (
             <fieldset key={key} className="checklist-group" role="radiogroup" aria-label={label}>
+              <legend className="checklist-group-title">{label}</legend>
               <div className="checklist-options">
                 {options.map((opt) => (
                   <button
