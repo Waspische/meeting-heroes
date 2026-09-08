@@ -39,12 +39,23 @@ export interface HostedMeeting {
   date: number;
 }
 
+export interface FinishedMeetingState {
+  id: string;
+  title: string;
+  startTime: number;
+  participantCount: number;
+  isHost: boolean;
+  endedAt: number;
+}
+
 const STORAGE_KEYS = {
   MEETINGS: 'opti_meetings',
   HOSTED_MEETINGS: 'opti_hosted_meetings',
   ACTIVE_MEETING: 'opti_active_meeting',
   SUBMITTED_OCCURRENCES: 'opti_submitted_occurrences',
   READ_REVIEWS_COUNTS: 'opti_read_reviews_counts',
+  EXIT_POLL_SILENCED_UNTIL: 'opti_exit_poll_silenced_until',
+  LAST_FINISHED_MEETING: 'opti_last_finished_meeting',
 };
 
 const hasChromeStorage = (): boolean =>
@@ -129,6 +140,29 @@ export const StorageHelper = {
     const updated = { ...current, ...counts };
     await setStorage(STORAGE_KEYS.READ_REVIEWS_COUNTS, updated);
   },
+
+  async isExitPollSilenced(): Promise<boolean> {
+    const until = await getStorage<number>(STORAGE_KEYS.EXIT_POLL_SILENCED_UNTIL, 0);
+    return Date.now() < until;
+  },
+
+  async silenceExitPollForToday(): Promise<void> {
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    await setStorage(STORAGE_KEYS.EXIT_POLL_SILENCED_UNTIL, endOfDay.getTime());
+  },
+
+  async unsilenceExitPoll(): Promise<void> {
+    await removeStorage(STORAGE_KEYS.EXIT_POLL_SILENCED_UNTIL);
+  },
+
+  getLastFinishedMeeting: (): Promise<FinishedMeetingState | null> =>
+    getStorage<FinishedMeetingState | null>(STORAGE_KEYS.LAST_FINISHED_MEETING, null),
+
+  saveLastFinishedMeeting: (m: FinishedMeetingState | null): Promise<void> =>
+    m === null
+      ? removeStorage(STORAGE_KEYS.LAST_FINISHED_MEETING)
+      : setStorage(STORAGE_KEYS.LAST_FINISHED_MEETING, m),
 
   subscribeToChanges(callback: () => void): () => void {
     if (hasChromeStorage()) {

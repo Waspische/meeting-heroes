@@ -100,6 +100,7 @@ export const translations = {
     emptyEvalsDesc: 'Prenez 10 secondes en fin de réunion pour donner votre note héroïque !',
     exitModalTitle: 'La réunion est terminée ! ⏱️',
     exitModalSubtitle: 'Donnez votre super-avis en 10 secondes (100% anonyme)',
+    silenceToday: 'Ne plus me demander aujourd’hui',
   },
 
   // ─── English (International) ────────────────────────────────────────────────
@@ -170,6 +171,7 @@ export const translations = {
     emptyEvalsDesc: 'Take 10 seconds at the end of a meeting to give your heroic review!',
     exitModalTitle: 'Meeting has ended! ⏱️',
     exitModalSubtitle: 'Give your super-review in 10 seconds (100% anonymous)',
+    silenceToday: 'Don’t ask me again today',
   },
 
   // ─── Español (Spain) ────────────────────────────────────────────────────────
@@ -240,6 +242,7 @@ export const translations = {
     emptyEvalsDesc: '¡Dedica 10 segundos al final de la reunión para dar tu valoración heroica!',
     exitModalTitle: '¡La reunión ha terminado! ⏱️',
     exitModalSubtitle: 'Da tu súper-opinión en 10 segundos (100% anónimo)',
+    silenceToday: 'No volver a preguntarme hoy',
   },
 
   // ─── Português (Portugal) ───────────────────────────────────────────────────
@@ -310,6 +313,7 @@ export const translations = {
     emptyEvalsDesc: 'Reserva 10 segundos no final da reunião para dar a tua nota heróica!',
     exitModalTitle: 'A reunião terminou! ⏱️',
     exitModalSubtitle: 'Dá a tua super-avaliação em 10 segundos (100% anónima)',
+    silenceToday: 'Não perguntar novamente hoje',
   },
 
   // ─── Português do Brasil (Brazil) ───────────────────────────────────────────
@@ -380,6 +384,7 @@ export const translations = {
     emptyEvalsDesc: 'Reserve 10 segundos no fim da reunião para dar sua nota heroica!',
     exitModalTitle: 'A reunião terminou! ⏱️',
     exitModalSubtitle: 'Dê sua superavaliação em 10 segundos (100% anônima)',
+    silenceToday: 'Não perguntar novamente hoje',
   },
 
   // ─── Italiano (Italy) ───────────────────────────────────────────────────────
@@ -450,6 +455,7 @@ export const translations = {
     emptyEvalsDesc: 'Prenditi 10 secondi a fine riunione per dare il tuo voto eroico!',
     exitModalTitle: 'La riunione è terminata! ⏱️',
     exitModalSubtitle: 'Dai la tua super-recensione in 10 secondi (100% anonima)',
+    silenceToday: 'Non chiedermelo più oggi',
   },
 
   // ─── Polski (Poland) ────────────────────────────────────────────────────────
@@ -520,6 +526,7 @@ export const translations = {
     emptyEvalsDesc: 'Poświęć 10 sekund na koniec spotkania, aby wystawić bohaterską ocenę!',
     exitModalTitle: 'Spotkanie dobiegło końca! ⏱️',
     exitModalSubtitle: 'Wystaw swoją super-opinię w 10 sekund (100% anonimowo)',
+    silenceToday: 'Nie pytaj mnie dzisiaj ponownie',
   },
 
   // ─── Українська (Ukraine) ────────────────────────────────────────────────────
@@ -590,6 +597,7 @@ export const translations = {
     emptyEvalsDesc: 'Приділіть 10 секунд наприкінці зустрічі, щоб залишити геройську оцінку!',
     exitModalTitle: 'Зустріч завершилась! ⏱️',
     exitModalSubtitle: 'Залиште супер-відгук за 10 секунд (100% анонімно)',
+    silenceToday: 'Не запитувати більше сьогодні',
   },
 
   // ─── Română (Romania) ────────────────────────────────────────────────────────
@@ -660,6 +668,7 @@ export const translations = {
     emptyEvalsDesc: 'Alocă 10 secunde la finalul ședinței pentru a oferi nota ta eroică!',
     exitModalTitle: 'Ședința s-a încheiat! ⏱️',
     exitModalSubtitle: 'Dă super-recenzia ta în 10 secunde (100% anonim)',
+    silenceToday: 'Nu mă mai întreba astăzi',
   }
 };
 

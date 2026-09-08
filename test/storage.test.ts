@@ -89,4 +89,28 @@ describe('Integration Test: StorageHelper & State Persistence', () => {
     expect(await StorageHelper.isOccurrenceSubmitted(occId)).toBe(true);
     expect(await StorageHelper.isOccurrenceSubmitted('other-occurrence')).toBe(false);
   });
+
+  it('silences exit poll for the rest of the day', async () => {
+    expect(await StorageHelper.isExitPollSilenced()).toBe(false);
+    await StorageHelper.silenceExitPollForToday();
+    expect(await StorageHelper.isExitPollSilenced()).toBe(true);
+    await StorageHelper.unsilenceExitPoll();
+    expect(await StorageHelper.isExitPollSilenced()).toBe(false);
+  });
+
+  it('saves and retrieves last finished meeting', async () => {
+    expect(await StorageHelper.getLastFinishedMeeting()).toBeNull();
+    const meeting = {
+      id: 'abc-defg-hij',
+      title: 'Standup Tech',
+      startTime: 1000,
+      participantCount: 4,
+      isHost: false,
+      endedAt: 2000,
+    };
+    await StorageHelper.saveLastFinishedMeeting(meeting);
+    expect(await StorageHelper.getLastFinishedMeeting()).toEqual(meeting);
+    await StorageHelper.saveLastFinishedMeeting(null);
+    expect(await StorageHelper.getLastFinishedMeeting()).toBeNull();
+  });
 });

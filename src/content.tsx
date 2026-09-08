@@ -27,38 +27,104 @@ const updateMeetingId = () => {
 // Scrape meeting metadata
 const scrapeMeetMetrics = () => {
   let title = 'Réunion Google Meet';
-  const titleEl = document.querySelector('[data-meeting-title]') ||
-    document.querySelector('.PDvu7') ||
-    document.querySelector('.rGqgbe');
-  if (titleEl && titleEl.textContent?.trim()) {
-    title = titleEl.textContent.trim();
-  } else if (document.title && document.title.includes('Meet -')) {
-    title = document.title.replace('Meet - ', '').trim();
+
+  // 1. Priorité à document.title (API native navigateur, stable et jamais minifiée)
+  if (document.title) {
+    const cleaned = document.title
+      .replace(/^Meet\s*[-–—:]\s*/i, '')
+      .replace(/\s*[-–—:]\s*Google Meet$/i, '')
+      .replace(/\s*[-–—:]\s*Meet$/i, '')
+      .trim();
+    if (cleaned && !cleaned.toLowerCase().includes('google meet')) {
+      title = cleaned;
+    }
   }
 
-  if (meetingStartTime) {
+  // 2. Attribut data standard ou balise de titre sémantique
+  if (title === 'Réunion Google Meet') {
+    const titleEl = document.querySelector('[data-meeting-title], [role="heading"]');
+    if (titleEl && titleEl.textContent?.trim()) {
+      title = titleEl.textContent.trim();
+    }
+  }
+
+  // Seule une réunion sans titre réel hérite de la date/heure pour la distinguer
+  if (meetingStartTime && (title === 'Réunion Google Meet' || title === 'Google Meet')) {
     const d = new Date(meetingStartTime);
     const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
     const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     title = `${title} (${dateStr} ${timeStr})`;
   }
 
+  // Décompte participants sans classe minifiée
   let participants = 1;
-  const badge = document.querySelector('.uG74Mc') ||
-    document.querySelector('.xWla1b') ||
-    document.querySelector('.knivn');
-  if (badge && badge.textContent?.trim()) {
-    const num = parseInt(badge.textContent.trim().replace(/[^0-9]/g, ''), 10);
-    if (!isNaN(num)) participants = num;
-  } else {
-    const gridItems = document.querySelectorAll('[data-requested-participant-id]');
+  const allButtons = document.querySelectorAll('button');
+  for (let i = 0; i < allButtons.length; i++) {
+    const b = allButtons[i];
+    const text = b.textContent || '';
+    const label = (b.getAttribute('aria-label') || '').toLowerCase();
+    const hasPeopleIcon = text.includes('people') || text.includes('group') || text.includes('person');
+    const hasParticipantWord = label.includes('participant') || label.includes('personne') || label.includes('people');
+    if (hasPeopleIcon || hasParticipantWord) {
+      const match = (label + ' ' + text).match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!isNaN(num) && num > 0) {
+          participants = num;
+          break;
+        }
+      }
+    }
+  }
+
+  if (participants === 1) {
+    const attrEl = document.querySelector('[data-participant-count]');
+    if (attrEl) {
+      const val = parseInt(attrEl.getAttribute('data-participant-count') || '', 10);
+      if (!isNaN(val) && val > 0) participants = val;
+    }
+  }
+
+  if (participants === 1) {
+    const gridItems = document.querySelectorAll('[data-requested-participant-id], [data-participant-id], [data-allocation-index]');
     if (gridItems.length > 0) participants = gridItems.length;
   }
 
-  const hostControlsBtn = document.querySelector('[aria-label*="Organisateur"], [aria-label*="Host controls"], [aria-label*="Commandes de l\'organisateur"]');
-  isHostUser = !!hostControlsBtn;
+  // Détection animateur/hôte via icône bouclier/sécurité standard Google ou aria-label
+  let isHost = false;
+  for (let i = 0; i < allButtons.length; i++) {
+    const b = allButtons[i];
+    const text = b.textContent || '';
+    const label = (b.getAttribute('aria-label') || '').toLowerCase();
+    if (
+      text.includes('admin_panel_settings') ||
+      text.includes('security') ||
+      text.includes('shield') ||
+      label.includes('organisat') ||
+      label.includes('host control') ||
+      label.includes('anfitrión') ||
+      label.includes('moderator')
+    ) {
+      isHost = true;
+      break;
+    }
+  }
+  isHostUser = isHost;
 
   return { title, participants, isHost: isHostUser };
+};
+
+// State for the specific tab/room
+const getTabMeetingState = (pollStatus: 'idle' | 'active' | 'submitted' = 'idle'): ActiveMeetingState => {
+  const metrics = scrapeMeetMetrics();
+  return {
+    id: meetingId,
+    title: metrics.title,
+    startTime: meetingStartTime || Date.now(),
+    participantCount: metrics.participants,
+    isHost: metrics.isHost,
+    pollStatus,
+  };
 };
 
 // Sync meeting details to storage
@@ -66,13 +132,14 @@ const syncMeetingState = async () => {
   if (!meetingId) return;
 
   const metrics = scrapeMeetMetrics();
-  const occurrenceId = getOccurrenceId(meetingId, meetingStartTime || Date.now());
+  const startTime = meetingStartTime || Date.now();
+  const occurrenceId = getOccurrenceId(meetingId, startTime);
   const isSubmittedForThisMeeting = await StorageHelper.isOccurrenceSubmitted(occurrenceId);
 
   const state: ActiveMeetingState = {
     id: meetingId,
     title: metrics.title,
-    startTime: meetingStartTime || Date.now(),
+    startTime,
     participantCount: metrics.participants,
     isHost: metrics.isHost,
     pollStatus: isSubmittedForThisMeeting ? 'submitted' : 'idle',
@@ -80,13 +147,22 @@ const syncMeetingState = async () => {
 
   await StorageHelper.saveActiveMeeting(state);
 
+  // Mémorise aussi comme dernière réunion pour la page d'atterrissage /exit
+  await StorageHelper.saveLastFinishedMeeting({
+    id: meetingId,
+    title: metrics.title,
+    startTime,
+    participantCount: metrics.participants,
+    isHost: metrics.isHost,
+    endedAt: Date.now(),
+  });
+
   if (metrics.isHost && meetingId) {
-    const occurrenceId = getOccurrenceId(meetingId, meetingStartTime || Date.now());
     const meetingHash = await hashMeetingId(occurrenceId);
     await StorageHelper.addHostedMeeting({
       meetingHash,
       title: metrics.title,
-      date: meetingStartTime || Date.now(),
+      date: startTime,
     });
   }
 };
@@ -148,17 +224,27 @@ const findMeetChatInput = (): HTMLTextAreaElement | HTMLElement | null => {
 
 // Trouve le bouton pour ouvrir le chat Google Meet
 const findMeetChatButton = (): HTMLElement | null => {
-  const candidates = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      'button[aria-label*="chat" i], button[aria-label*="discut" i], button[aria-label*="message" i], ' +
-      '[role="button"][aria-label*="chat" i], [role="button"][aria-label*="discut" i], [role="button"][aria-label*="message" i], ' +
-      '[data-panel-id="2"], [data-panel-id="3"]'
-    )
-  );
-  const genuine = candidates.filter(
+  const allButtons = Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"]'));
+  const genuine = allButtons.filter(
     (el) => !el.closest('#opti-meet-sidebar-ctrl') && !el.closest('.opti-meet-exit-overlay')
   );
-  return genuine[0] || null;
+  for (const b of genuine) {
+    const text = (b.textContent || '').trim();
+    const label = (b.getAttribute('aria-label') || '').toLowerCase();
+    if (
+      text.includes('chat') ||
+      text.includes('chat_bubble') ||
+      text.includes('forum') ||
+      text.includes('speaker_notes') ||
+      label.includes('chat') ||
+      label.includes('discut') ||
+      label.includes('message') ||
+      label.includes('charla')
+    ) {
+      return b;
+    }
+  }
+  return null;
 };
 
 // Action 2 : Prépare le message dans le chat Google Meet SANS l'envoyer automatiquement
@@ -265,17 +351,27 @@ const submitEvaluation = async (
 
 // ─── Sidebar & Exit Overlay Containers (DRY Hook) ────────────────────────────
 
-function useMeetingReview(onClose: () => void) {
-  const [activeMeeting, setActiveMeeting] = useState<ActiveMeetingState | null>(null);
+function useMeetingReview(onClose: () => void, targetMeeting?: ActiveMeetingState | null) {
+  const [activeMeeting, setActiveMeeting] = useState<ActiveMeetingState | null>(targetMeeting || null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
     const check = async () => {
-      const active = await StorageHelper.getActiveMeeting();
-      setActiveMeeting(active);
-      const rawId = meetingId || active?.id;
+      let current = targetMeeting;
+      if (!current) {
+        if (meetingId) {
+          const rawState = getTabMeetingState();
+          const occurrenceId = getOccurrenceId(meetingId, rawState.startTime);
+          const submitted = await StorageHelper.isOccurrenceSubmitted(occurrenceId);
+          current = { ...rawState, pollStatus: submitted ? 'submitted' : 'idle' };
+        } else {
+          current = await StorageHelper.getActiveMeeting();
+        }
+      }
+      setActiveMeeting(current);
+      const rawId = current?.id || meetingId;
       if (rawId) {
-        const occurrenceId = getOccurrenceId(rawId, active?.startTime || meetingStartTime || Date.now());
+        const occurrenceId = getOccurrenceId(rawId, current?.startTime || meetingStartTime || Date.now());
         const submitted = await StorageHelper.isOccurrenceSubmitted(occurrenceId);
         setIsSubmitted(submitted);
       } else {
@@ -284,7 +380,7 @@ function useMeetingReview(onClose: () => void) {
     };
     check();
     return StorageHelper.subscribeToChanges(check);
-  }, []);
+  }, [targetMeeting]);
 
   const handleFormSubmit = async (data: EvaluationFormData) => {
     if (!activeMeeting) return;
@@ -314,7 +410,11 @@ function SidebarContainer({ onClose }: { onClose: () => void }) {
       <div className="opti-meet-body">
         {activeMeeting && (
           <div className="opti-title-badge">
-            {activeMeeting.title} ({t.guestsCount(activeMeeting.participantCount)})
+            <span className="opti-title-badge-title">{activeMeeting.title}</span>
+            <span className="opti-title-badge-meta">
+              <span className="material-icons-outlined" style={{ fontSize: '13px', verticalAlign: 'middle' }}>group</span>
+              {t.guestsCount(activeMeeting.participantCount)}
+            </span>
           </div>
         )}
 
@@ -331,16 +431,32 @@ function SidebarContainer({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ExitOverlayContainer({ onClose }: { onClose: () => void }) {
-  const { activeMeeting, isSubmitted, handleFormSubmit } = useMeetingReview(onClose);
+function ExitOverlayContainer({ onClose, targetMeeting }: { onClose: () => void; targetMeeting?: ActiveMeetingState | null }) {
+  const { activeMeeting, isSubmitted, handleFormSubmit } = useMeetingReview(onClose, targetMeeting);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  // Auto-dismiss: ferme le toast après 20s sans interaction
+  useEffect(() => {
+    if (isSubmitted || isInteracting) return;
+    const timer = setTimeout(() => {
+      onClose();
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [isSubmitted, isInteracting, onClose]);
+
+  const handleSilenceToday = async () => {
+    await StorageHelper.silenceExitPollForToday();
+    onClose();
+  };
 
   return (
     <div
       className="opti-meet-exit-card"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Mission accomplie - Bilan de réunion"
-      style={{ maxWidth: '420px', width: '100%', padding: '24px', background: '#fff', borderRadius: '12px', boxShadow: 'var(--shadow-3)', position: 'relative' }}
+      role="region"
+      aria-label="Meeting Heroes - Bilan de fin de réunion"
+      onMouseEnter={() => setIsInteracting(true)}
+      onFocusCapture={() => setIsInteracting(true)}
+      style={{ position: 'relative' }}
     >
       {/* Close button */}
       <button
@@ -362,15 +478,15 @@ function ExitOverlayContainer({ onClose }: { onClose: () => void }) {
         }}
         aria-label={t.closeBtn}
       >
-        <span className="material-icons-outlined" style={{ fontSize: '20px' }}>close</span>
+        <span className="material-icons-outlined" style={{ fontSize: '18px' }}>close</span>
       </button>
 
       {!isSubmitted && (
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 6px 0', color: '#202124' }}>
+        <div style={{ textAlign: 'center', marginBottom: '14px', paddingRight: '20px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px 0', color: '#202124' }}>
             {t.exitModalTitle}
           </h2>
-          <p style={{ fontSize: '13px', color: '#5f6368', margin: 0 }}>
+          <p style={{ fontSize: '12px', color: '#5f6368', margin: 0 }}>
             {t.exitModalSubtitle}
           </p>
         </div>
@@ -383,129 +499,234 @@ function ExitOverlayContainer({ onClose }: { onClose: () => void }) {
         onCopyInvite={copyShareInvite}
         onChatInvite={pasteIntoMeetChat}
       />
+
+      {!isSubmitted && (
+        <button
+          type="button"
+          onClick={handleSilenceToday}
+          className="opti-silence-today-btn"
+        >
+          {t.silenceToday}
+        </button>
+      )}
     </div>
   );
 }
 
 // ─── Injection Anchors ────────────────────────────────────────────────────────
 
-// ─── In-Call Detection & Header Positioning ──────────────────────────────────
+// ─── Mode Dev & End-Call Detection ──────────────────────────────────────────
 
-let callEverStarted = false;
-
-const isCallActive = (): boolean => {
-  // 1. Doit impérativement être sur une URL de réunion Google Meet valide (/xxx-xxxx-xxx)
-  // et JAMAIS sur la page d'accueil meet.google.com/ ni /landing ni /exit
-  const isMeetingUrl = /^\/[a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3}/i.test(window.location.pathname);
-  if (!isMeetingUrl) {
-    callEverStarted = false;
-    return false;
+// Détection automatique du mode dev (extension chargée déballée, sans update_url Chrome Web Store)
+const isDevMode = (): boolean => {
+  const forced = localStorage.getItem('opti_dev_mode');
+  if (forced !== null) return forced === 'true';
+  try {
+    return !chrome.runtime?.getManifest?.()?.update_url;
+  } catch {
+    return true;
   }
+};
 
-  if (
-    window.location.pathname.includes('/landing') ||
-    window.location.pathname.includes('/exit') ||
-    document.body.textContent?.includes('Vous avez quitté la réunion') ||
-    document.body.textContent?.includes('You left the meeting')
-  ) {
-    callEverStarted = false;
-    return false;
-  }
+// ─── Résilience Invariants Google Meet (Multicouche, Indépendant de la Langue) ──
 
-  // 2. Si l'écran d'attente (lobby / green room) est présent, l'appel N'EST PAS actif
-  const isLobby = Array.from(document.querySelectorAll('button')).some((b) => {
-    const t = (b.textContent || '').trim().toLowerCase();
-    return (
-      t === 'participer' ||
-      t === 'participer à la réunion' ||
-      t === 'join now' ||
-      t === 'demander à participer' ||
-      t === 'ask to join' ||
-      t === 'rejoindre' ||
-      t === 'join'
-    );
-  }) || !!document.querySelector('button[jsname="Qx7uuf"], [data-join-button]');
+// Détecte le bouton raccrocher sans dépendre d'un seul sélecteur minifié
+const isLeaveCallButton = (el: Element | null): boolean => {
+  if (!el) return false;
+  const btn = el.closest('button, [role="button"]');
+  if (!btn) return false;
 
-  if (isLobby) {
-    return false;
-  }
-
-  // 3. Preuves irréfutables qu'on est DANS l'appel :
-  const inCallElement = document.querySelector(
-    'button[aria-label*="quitter" i], button[aria-label*="leave" i], button[aria-label*="raccrocher" i], button[data-call-ended], ' +
-    '.X3H8c, .ND08le, .gjvSDd, .YDkhgc, .B0Ihcb, section[aria-label="Presentation"], ' +
-    'button[aria-label*="Stop presenting" i], button[aria-label*="Arrêter la présentation" i]'
-  );
-
-  if (inCallElement) {
-    callEverStarted = true;
+  // 1. Attributs directs ou jsname Google Meet
+  if (btn.hasAttribute('data-call-ended') || btn.getAttribute('jsname') === 'CQylAd') {
     return true;
   }
 
-  if (callEverStarted) {
+  // 2. Icône Material Icons invariant Google ("call_end")
+  const content = (btn.textContent || '').trim();
+  if (content.includes('call_end')) {
+    return true;
+  }
+
+  // 3. Fallbacks multilingues de sécurité sur l'aria-label
+  const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+  if (
+    label.includes('leave') ||
+    label.includes('quitter') ||
+    label.includes('raccrocher') ||
+    label.includes('salir') ||
+    label.includes('beenden') ||
+    label.includes('uscir') ||
+    label.includes('opust')
+  ) {
     return true;
   }
 
   return false;
 };
 
+// Vérifie si le bouton raccrocher est présent dans le DOM
+const hasInCallControlsPresent = (): boolean => {
+  const buttons = document.querySelectorAll('button, [role="button"]');
+  for (let i = 0; i < buttons.length; i++) {
+    if (isLeaveCallButton(buttons[i])) return true;
+  }
+  return false;
+};
+
+// Détecte si l'utilisateur est sur l'écran d'attente / lobby avant de rejoindre l'appel
+const isLobby = (): boolean => {
+  const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
+  return buttons.some((b) => {
+    if (b.hasAttribute('data-join-button')) return true;
+    const txt = (b.textContent || '').trim().toLowerCase();
+    const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+    return (
+      txt === 'participer' ||
+      txt === 'participer à la réunion' ||
+      txt === 'demander à participer' ||
+      txt === 'rejoindre' ||
+      txt === 'join now' ||
+      txt === 'ask to join' ||
+      txt === 'join' ||
+      aria.includes('join now') ||
+      aria.includes('participer')
+    );
+  });
+};
+
+// Détection 100% indépendante de la langue (basée sur les invariants du DOM Google Meet)
+const checkHasLeft = (): boolean => {
+  const path = window.location.pathname;
+  if (path.includes('/landing') || path.includes('/exit') || path.includes('/_meet')) return true;
+
+  // 1. Textes caractéristiques de sortie
+  const bodyText = (document.body.textContent || '').toLowerCase();
+  if (
+    bodyText.includes('you left') ||
+    bodyText.includes('quitté') ||
+    bodyText.includes('ended the call') ||
+    bodyText.includes('mis fin') ||
+    bodyText.includes('has ended') ||
+    bodyText.includes('est terminée')
+  ) {
+    return true;
+  }
+
+  // 2. Transition d'état : on était en appel, et le bouton raccrocher a disparu
+  if (callEverStarted && !hasInCallControlsPresent()) {
+    return true;
+  }
+
+  // 3. Bouton réintégrer ou retour accueil sans contrôles d'appel
+  const allInteractive = Array.from(document.querySelectorAll('button, [role="button"], a'));
+  const hasRejoinOrHome = allInteractive.some((el) => {
+    const t = (el.textContent || '').trim().toLowerCase();
+    const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+    return (
+      t.includes('rejoin') ||
+      t.includes('réintégrer') ||
+      t.includes('retourner') ||
+      t.includes('return to home') ||
+      aria.includes('rejoin') ||
+      aria.includes('réintégrer')
+    );
+  });
+
+  if (hasRejoinOrHome && !hasInCallControlsPresent() && !isLobby()) {
+    return true;
+  }
+
+  return false;
+};
+
+// ─── In-Call Detection & Header Positioning ──────────────────────────────────
+
+let callEverStarted = false;
+
+const isCallActive = (): boolean => {
+  const isMeetingUrl = /^\/[a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3}/i.test(window.location.pathname);
+  if (!isMeetingUrl) {
+    callEverStarted = false;
+    return false;
+  }
+
+  // Jamais actif dans le lobby avant de rejoindre
+  if (isLobby()) {
+    return false;
+  }
+
+  // Jamais actif si l'appel est terminé
+  if (checkHasLeft()) {
+    callEverStarted = false;
+    return false;
+  }
+
+  // Actif si le bouton raccrocher est présent
+  if (hasInCallControlsPresent()) {
+    callEverStarted = true;
+    return true;
+  }
+
+  return false;
+};
+
+let lastPositionedX = -1;
+let lastPositionY = -1;
+
 const updateTogglePosition = (toggle: HTMLElement): boolean => {
-  // Le bouton doit TOUJOURS rester dans document.body pour que Google Meet ne puisse jamais le détruire
   if (toggle.parentElement !== document.body) {
     document.body.appendChild(toggle);
   }
 
-  // Cherche l'ensemble du groupe titre (.X3H8c) et ses composants
-  const titleBox = (
-    document.querySelector('.X3H8c') ||
-    document.querySelector('div[jscontroller="OFnRNd"]')
-  ) as HTMLElement | null;
+  // Cherche les éléments textuels dans la barre d'en-tête gauche (top <= 75px, left <= 600px)
+  const headerLeaves = Array.from(document.querySelectorAll<HTMLElement>('div, span, p')).filter((el) => {
+    if (el.closest('#opti-meet-toggle-btn') || el.closest('#opti-meet-sidebar-ctrl') || el.closest('#opti-exit-dialog')) return false;
+    if (el.children.length > 0) return false;
+    const txt = (el.textContent || '').trim();
+    if (!txt) return false;
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.top <= 75 && r.left >= 0 && r.left <= 600 && r.width > 0 && r.height > 0;
+  });
 
-  const titleText = document.querySelector('.ND08le') as HTMLElement | null;
-  const infoBtn = document.querySelector('.r6xAKc button, .r6xAKc [role="button"]') as HTMLElement | null;
-  const clockText = document.querySelector('.MQKmmc') as HTMLElement | null;
+  let maxRight = 0;
+  let vRef: HTMLElement | null = null;
 
-  let rightBoundary = 0;
-
-  if (titleBox) {
-    const r = titleBox.getBoundingClientRect();
-    if (r.right > 0) rightBoundary = Math.max(rightBoundary, r.right);
-  }
-
-  if (titleText) {
-    const r = titleText.getBoundingClientRect();
-    if (r.right > 0) rightBoundary = Math.max(rightBoundary, r.right);
-  }
-
-  if (infoBtn) {
-    const r = infoBtn.getBoundingClientRect();
-    if (r.right > 0) rightBoundary = Math.max(rightBoundary, r.right);
-  }
-
-  // Référence verticale ultra-précise : le bouton info (i) ou l'horloge
-  const vRef = infoBtn || clockText || titleText || titleBox;
-
-  if (rightBoundary > 50 && vRef) {
-    const vRect = vRef.getBoundingClientRect();
-    if (vRect.top >= 0 && vRect.top <= 80 && vRect.height > 0) {
-      const centerY = vRect.top + vRect.height / 2;
-      const topPos = Math.round(centerY - 16); // 16 = 32px / 2
-      const leftPos = Math.round(rightBoundary + 10);
-
-      toggle.style.setProperty('position', 'fixed', 'important');
-      toggle.style.setProperty('top', `${Math.max(4, topPos)}px`, 'important');
-      toggle.style.setProperty('left', `${leftPos}px`, 'important');
-      toggle.style.setProperty('right', 'auto', 'important');
-      toggle.style.setProperty('bottom', 'auto', 'important');
-      toggle.style.setProperty('height', '32px', 'important');
-      toggle.style.setProperty('line-height', '32px', 'important');
-      toggle.style.setProperty('border-radius', '16px', 'important');
-      toggle.style.setProperty('z-index', '9999', 'important');
-      return true;
+  for (const el of headerLeaves) {
+    const r = el.getBoundingClientRect();
+    if (r.right > maxRight) {
+      maxRight = r.right;
+      vRef = el;
     }
   }
 
-  return false;
+  let targetLeft = 240;
+  let targetTop = 14;
+
+  if (maxRight > 50 && vRef) {
+    const vRect = vRef.getBoundingClientRect();
+    const centerY = vRect.top + vRect.height / 2;
+    targetTop = Math.round(centerY - 16);
+    targetLeft = Math.round(maxRight + 12);
+  }
+
+  // Évite tout recalcul si déjà positionné de manière stable (seuil 6px)
+  if (lastPositionedX !== -1 && Math.abs(targetLeft - lastPositionedX) <= 6 && Math.abs(targetTop - lastPositionY) <= 3) {
+    return true;
+  }
+
+  lastPositionedX = targetLeft;
+  lastPositionY = targetTop;
+
+  toggle.style.setProperty('position', 'fixed', 'important');
+  toggle.style.setProperty('top', `${targetTop}px`, 'important');
+  toggle.style.setProperty('left', `${targetLeft}px`, 'important');
+  toggle.style.setProperty('right', 'auto', 'important');
+  toggle.style.setProperty('bottom', 'auto', 'important');
+  toggle.style.setProperty('height', '32px', 'important');
+  toggle.style.setProperty('line-height', '32px', 'important');
+  toggle.style.setProperty('border-radius', '16px', 'important');
+  toggle.style.setProperty('z-index', '9999', 'important');
+  return true;
 };
 
 // ─── Injection Anchors ────────────────────────────────────────────────────────
@@ -627,20 +848,61 @@ const injectReactUI = () => {
   });
 };
 
-const injectExitOverlay = async () => {
+const injectExitOverlay = async (force: boolean = false) => {
   if (document.getElementById('opti-exit-dialog')) return;
   if (exitPollDismissed) return;
 
-  const active = await StorageHelper.getActiveMeeting();
-  const rawId = meetingId || active?.id;
+  // 1. Respecter STRICTEMENT le silence pour aujourd'hui (en prod ET en dev)
+  if (await StorageHelper.isExitPollSilenced()) return;
+
+  // 2. Détermine la réunion à évaluer : priorité à la dernière réunion terminée récemment
+  let currentMeeting: ActiveMeetingState | null = null;
+  const lastFinished = await StorageHelper.getLastFinishedMeeting();
+  if (lastFinished && Date.now() - lastFinished.endedAt < 30 * 60 * 1000) {
+    currentMeeting = {
+      id: lastFinished.id,
+      title: lastFinished.title,
+      startTime: lastFinished.startTime,
+      participantCount: lastFinished.participantCount,
+      isHost: lastFinished.isHost,
+      pollStatus: 'idle',
+    };
+  }
+  if (!currentMeeting && meetingId) {
+    currentMeeting = getTabMeetingState();
+  }
+  if (!currentMeeting) {
+    currentMeeting = await StorageHelper.getActiveMeeting();
+  }
+
+  // Ne ré-affiche jamais si déjà soumis pour cette session
+  const rawId = currentMeeting?.id || meetingId;
   if (rawId) {
-    const occurrenceId = getOccurrenceId(rawId, active?.startTime || meetingStartTime || Date.now());
+    const occurrenceId = getOccurrenceId(rawId, currentMeeting?.startTime || meetingStartTime || Date.now());
     if (await StorageHelper.isOccurrenceSubmitted(occurrenceId)) {
-      return; // Déjà soumis : ne jamais ré-afficher l'overlay de sortie !
+      return;
     }
   }
-  if (active && active.pollStatus === 'submitted') {
+  if (currentMeeting && currentMeeting.pollStatus === 'submitted') {
     return;
+  }
+
+  const dev = isDevMode();
+
+  // En prod seulement (pas en dev ni en forcé) : vérification des seuils
+  if (!force && !dev) {
+    const participantCount = currentMeeting?.participantCount || 1;
+    if (participantCount < 3) {
+      return;
+    }
+
+    const startTime = currentMeeting?.startTime || meetingStartTime;
+    if (startTime) {
+      const duration = Date.now() - startTime;
+      if (duration < 5 * 60 * 1000) {
+        return;
+      }
+    }
   }
 
   const overlay = document.createElement('div');
@@ -655,7 +917,7 @@ const injectExitOverlay = async () => {
     exitPollDismissed = true;
   };
 
-  root.render(<ExitOverlayContainer onClose={handleClose} />);
+  root.render(<ExitOverlayContainer onClose={handleClose} targetMeeting={currentMeeting} />);
 };
 
 // ─── Font Injection ───────────────────────────────────────────────────────────
@@ -682,16 +944,33 @@ const init = async () => {
   if ((window as any).__OPTI_MEETING_INITIALIZED__) return;
   (window as any).__OPTI_MEETING_INITIALIZED__ = true;
 
+  // Helper console pour réinitialiser le silence lors des tests (disponible dans le contexte content script et page top)
+  const unsilence = async () => {
+    await StorageHelper.unsilenceExitPoll();
+    console.log('[Meeting Heroes] Silence désactivé pour aujourd’hui.');
+  };
+  (window as any).resetMeetingHeroesSilence = unsilence;
+  window.addEventListener('opti_meeting_reset_silence', unsilence);
+
+  try {
+    const script = document.createElement('script');
+    script.textContent = `window.resetMeetingHeroesSilence = () => { window.dispatchEvent(new CustomEvent('opti_meeting_reset_silence')); return "Demande de réinitialisation envoyée à Meeting Heroes."; };`;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove();
+  } catch (err) {
+    // Ignore context injection errors
+  }
+
   injectFonts();
   updateMeetingId();
+
+  // Si on est déjà sur l'écran de fin (ex: page rechargée après avoir quitté)
+  if (checkHasLeft()) {
+    await injectExitOverlay(false);
+    return;
+  }
+
   if (!meetingId) {
-    const wasLanding = window.location.pathname.includes('/landing') ||
-      window.location.pathname.includes('/exit') ||
-      document.body.textContent?.includes('Vous avez quitté la réunion') ||
-      document.body.textContent?.includes('You left the meeting');
-    if (wasLanding) {
-      await injectExitOverlay();
-    }
     return;
   }
 
@@ -719,27 +998,54 @@ const init = async () => {
     }
   }, 500);
 
+  // Surveille la sortie d'appel en continu (sans forcer, pour respecter les dismiss et silences)
   setInterval(async () => {
-    if (exitPollDismissed) return;
-    const currentId = meetingId || (await StorageHelper.getActiveMeeting())?.id;
-    if (currentId) {
-      const occurrenceId = getOccurrenceId(currentId, meetingStartTime || Date.now());
-      if (await StorageHelper.isOccurrenceSubmitted(occurrenceId)) {
-        return; // Déjà voté pour cette réunion spécifique
+    if (checkHasLeft()) {
+      await injectExitOverlay(false);
+    }
+  }, 500);
+
+  // Capture directe du clic sur le bouton rouge "Quitter l'appel"
+  document.addEventListener(
+    'click',
+    async (e) => {
+      const target = (e.target as HTMLElement)?.closest('button, [role="button"]');
+      if (target && isLeaveCallButton(target)) {
+        exitPollDismissed = false;
+        const metrics = scrapeMeetMetrics();
+        await StorageHelper.saveLastFinishedMeeting({
+          id: meetingId,
+          title: metrics.title,
+          startTime: meetingStartTime || Date.now(),
+          participantCount: metrics.participants,
+          isHost: metrics.isHost,
+          endedAt: Date.now(),
+        });
+        setTimeout(() => {
+          injectExitOverlay(false);
+        }, 300);
+      }
+    },
+    true
+  );
+
+  // Nettoie l'état actif quand l'utilisateur quitte la page de réunion et stocke la dernière réunion terminée
+  window.addEventListener('pagehide', async () => {
+    if (meetingId) {
+      const metrics = scrapeMeetMetrics();
+      await StorageHelper.saveLastFinishedMeeting({
+        id: meetingId,
+        title: metrics.title,
+        startTime: meetingStartTime || Date.now(),
+        participantCount: metrics.participants,
+        isHost: metrics.isHost,
+        endedAt: Date.now(),
+      });
+      const active = await StorageHelper.getActiveMeeting();
+      if (active && active.id === meetingId) {
+        await StorageHelper.saveActiveMeeting(null);
       }
     }
-    const wasLanding = window.location.pathname.includes('/landing') ||
-      window.location.pathname.includes('/exit') ||
-      document.body.textContent?.includes('Vous avez quitté la réunion') ||
-      document.body.textContent?.includes('You left the meeting');
-    if (wasLanding) {
-      await injectExitOverlay();
-    }
-  }, 2000);
-
-  // Nettoie l'état actif quand l'utilisateur quitte la page de réunion
-  window.addEventListener('pagehide', () => {
-    StorageHelper.saveActiveMeeting(null);
   });
 };
 

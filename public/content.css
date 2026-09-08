@@ -66,7 +66,7 @@
   font-size: 13px !important;
   font-weight: 500 !important;
   letter-spacing: 0.2px !important;
-  line-height: 36px !important;
+  line-height: 32px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
   transition: opacity 0.25s ease, transform 0.2s ease !important;
   white-space: nowrap !important;
@@ -182,22 +182,39 @@
 }
 
 .opti-title-badge {
-  font-size: 11px !important;
+  font-size: 12px !important;
   background: #0f172a !important;
   color: #f8fafc !important;
   border: 1px solid rgba(245, 158, 11, 0.4) !important;
-  padding: 4px 10px !important;
-  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
   font-weight: 500 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin-bottom: 10px !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+  white-space: normal !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+}
+
+.opti-title-badge-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  line-height: 1.35 !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+
+.opti-title-badge-meta {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
 }
 
 .opti-host-actions {
@@ -268,40 +285,77 @@
   background: #1557b0 !important;
 }
 
-/* Injected Dialog on leaving */
+/* Injected Toast Notification on leaving (Discreet & Non-blocking) */
 .opti-meet-exit-overlay {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  background: rgba(32, 33, 36, 0.6) !important;
-  backdrop-filter: blur(4px) !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
   z-index: 12000 !important;
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  align-items: flex-end !important;
+  justify-content: flex-end !important;
   font-family: 'Roboto', sans-serif !important;
-  overflow: hidden !important;
+  pointer-events: none !important;
+  overflow: visible !important;
 }
 
 .opti-meet-exit-card {
-  width: 420px !important;
-  max-height: 80vh;
+  pointer-events: auto !important;
+  width: 380px !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100vh - 48px) !important;
   background: #ffffff !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(245, 158, 11, 0.45) !important;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(245, 158, 11, 0.15) !important;
-  padding: 24px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(245, 158, 11, 0.15) !important;
+  padding: 20px !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 16px !important;
-  overflow: hidden !important;
+  gap: 12px !important;
+  overflow-y: auto !important;
+  animation: optiToastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes optiToastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.opti-silence-today-btn {
+  background: none !important;
+  border: none !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  padding: 6px 8px !important;
+  border-radius: 6px !important;
+  text-align: center !important;
+  margin-top: 4px !important;
+  transition: color 0.15s ease, background-color 0.15s ease !important;
+  display: inline-block !important;
+  width: 100% !important;
+}
+
+.opti-silence-today-btn:hover {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
 }
 
 .opti-meet-exit-title {
-  font-size: 20px !important;
-  font-weight: 500 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
   color: #202124 !important;
 }
 
