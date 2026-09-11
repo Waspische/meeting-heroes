@@ -9,7 +9,7 @@
     "clasp:push": "clasp push -f",
     "clasp:deploy": "clasp deploy -i AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW --description \"Meeting Heroes WebApp Update\"",
     "test": "vitest run",
-    "package": "npm run build && cd dist && zip -r ../meeting-heroes-v1.2.0.zip . -x '*.DS_Store*' && cd ..",
+    "package": "npm run build && mkdir -p releases && cd dist && zip -r ../releases/meeting-heroes-v1.2.0.zip . -x '*.DS_Store*' && cd ..",
     "lint": "oxlint",
     "preview": "vite preview"
   },
