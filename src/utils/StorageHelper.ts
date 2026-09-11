@@ -64,9 +64,17 @@ const hasChromeStorage = (): boolean =>
 const getStorage = async <T>(key: string, defaultVal: T): Promise<T> => {
   if (hasChromeStorage()) {
     return new Promise((resolve) => {
-      chrome.storage.local.get([key], (res) => {
-        resolve(res[key] !== undefined ? (res[key] as T) : defaultVal);
-      });
+      try {
+        chrome.storage.local.get([key], (res) => {
+          if (chrome.runtime.lastError || !res) {
+            resolve(defaultVal);
+          } else {
+            resolve(res[key] !== undefined ? (res[key] as T) : defaultVal);
+          }
+        });
+      } catch {
+        resolve(defaultVal);
+      }
     });
   }
   try {
@@ -79,20 +87,36 @@ const getStorage = async <T>(key: string, defaultVal: T): Promise<T> => {
 
 const setStorage = async <T>(key: string, val: T): Promise<void> => {
   if (hasChromeStorage()) {
-    return new Promise((resolve) => chrome.storage.local.set({ [key]: val }, resolve));
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.set({ [key]: val }, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
   }
-  localStorage.setItem(key, JSON.stringify(val));
-  window.dispatchEvent(new Event('storage'));
-  window.dispatchEvent(new Event('opti_storage_changed'));
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('opti_storage_changed'));
+  } catch {}
 };
 
 const removeStorage = async (key: string): Promise<void> => {
   if (hasChromeStorage()) {
-    return new Promise((resolve) => chrome.storage.local.remove([key], resolve));
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.remove([key], () => resolve());
+      } catch {
+        resolve();
+      }
+    });
   }
-  localStorage.removeItem(key);
-  window.dispatchEvent(new Event('storage'));
-  window.dispatchEvent(new Event('opti_storage_changed'));
+  try {
+    localStorage.removeItem(key);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('opti_storage_changed'));
+  } catch {}
 };
 
 export const StorageHelper = {
@@ -189,5 +213,22 @@ export const StorageHelper = {
     if (!hasChromeStorage()) {
       window.dispatchEvent(new Event('opti_storage_changed'));
     }
+  },
+
+  async clearAll(): Promise<void> {
+    if (hasChromeStorage()) {
+      await new Promise<void>((resolve) => {
+        try {
+          chrome.storage.local.clear(() => resolve());
+        } catch {
+          resolve();
+        }
+      });
+    }
+    try {
+      localStorage.clear();
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('opti_storage_changed'));
+    } catch {}
   },
 };

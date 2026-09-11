@@ -1,12 +1,15 @@
 {
   "name": "meeting-heroes",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --config vite.config.content.ts && vite build --config vite.config.background.ts",
+    "clasp:push": "clasp push -f",
+    "clasp:deploy": "clasp deploy -i AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW --description \"Meeting Heroes WebApp Update\"",
     "test": "vitest run",
+    "package": "npm run build && cd dist && zip -r ../meeting-heroes-v1.2.0.zip . -x '*.DS_Store*' && cd ..",
     "lint": "oxlint",
     "preview": "vite preview"
   },

@@ -133,18 +133,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
-    const options: RequestInit = { method: method === 'POST' ? 'POST' : 'GET' };
+    const options: RequestInit = {
+      method: method === 'POST' ? 'POST' : 'GET',
+      credentials: 'include',
+      redirect: 'follow',
+    };
     if (options.method === 'POST') {
       options.body = typeof body === 'string' ? body : JSON.stringify(body);
       options.headers = { 'Content-Type': 'text/plain' };
     }
     fetch(url, options)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
+        }
         return res.json();
       })
       .then((data) => sendResponse({ success: true, data }))
-      .catch((err) => sendResponse({ success: false, error: err.toString() }));
+      .catch((err) => {
+        console.error('[Meeting Heroes] Background fetch error:', err);
+        sendResponse({ success: false, error: err.toString() });
+      });
     return true; // Keep message channel open for async response
   }
 });

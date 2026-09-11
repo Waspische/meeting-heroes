@@ -5,7 +5,7 @@
 
 import { getAnonymousVoterToken } from './CryptoHelper';
 
-const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/adeo.com/s/AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW/exec';
+export const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/adeo.com/s/AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW/exec';
 
 export interface AnonymousEvaluation {
   action?: 'submit_evaluation';
@@ -35,43 +35,68 @@ export interface RemoteEvaluation {
 
 const isConfigured = () => !!APPS_SCRIPT_URL;
 
+declare const google: any;
+
 const executeRequest = async (url: string, bodyObj: any): Promise<any> => {
+  // 1. Contexte Google Apps Script WebApp (iframe native)
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler((response: any) => {
+          resolve(response);
+        })
+        .withFailureHandler((err: any) => {
+          reject(new Error(err?.message || String(err)));
+        })
+        .submitEvaluationWeb(bodyObj);
+    });
+  }
+
   const jsonString = JSON.stringify(bodyObj);
 
-  // Si on est dans une page (popup, content script), on délègue au service worker pour contourner CORS.
-  // Si on est déjà dans le service worker (window undefined), on fait le fetch directement.
-  const isPageContext = typeof window !== 'undefined';
+  // 2. Contexte Extension Chrome (popup ou content script sur Google Meet)
+  const isExtensionContext =
+    typeof window !== 'undefined' &&
+    typeof chrome !== 'undefined' &&
+    !!chrome.runtime?.id &&
+    (window.location.protocol === 'chrome-extension:' || window.location.hostname === 'meet.google.com');
 
-  if (isPageContext && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-    return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        {
-          type: 'FETCH_SHEETS',
-          method: 'POST',
-          url,
-          body: jsonString,
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else if (response && response.success) {
-            resolve(response.data);
-          } else {
-            reject(new Error(response?.error || 'Unknown background fetch error'));
+  if (isExtensionContext && chrome.runtime.sendMessage) {
+    try {
+      return await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            type: 'FETCH_SHEETS',
+            method: 'POST',
+            url,
+            body: jsonString,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else if (response && response.success) {
+              resolve(response.data);
+            } else {
+              reject(new Error(response?.error || 'Unknown background fetch error'));
+            }
           }
-        }
-      );
-    });
-  } else {
-    // Service worker background ou environnement de test
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: jsonString,
-    });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    return res.json();
+        );
+      });
+    } catch (bgErr) {
+      console.warn('Meeting Heroes: Background fetch failed, attempting direct fetch:', bgErr);
+    }
   }
+
+  // 3. Contexte web standard, tests ou fallback popup : fetch direct
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: jsonString,
+    credentials: 'include',
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
 };
 
 export const SheetsHelper = {
@@ -119,6 +144,24 @@ export const SheetsHelper = {
       return [];
     } catch (err) {
       console.error('Meeting Heroes: Failed to fetch evaluations:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Fetches all evaluations submitted by the current user (via WebApp or Extension).
+   */
+  async fetchMyEvaluations(voterTokens: string[] = []): Promise<any[]> {
+    if (!isConfigured()) return [];
+    try {
+      const data = await executeRequest(APPS_SCRIPT_URL, {
+        action: 'fetch_my_evaluations',
+        voterTokens,
+      });
+      if (Array.isArray(data)) return data;
+      return [];
+    } catch (err) {
+      console.error('Meeting Heroes: Failed to fetch my evaluations:', err);
       return [];
     }
   },

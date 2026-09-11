@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting Heroes — Sauve ta réunion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-hover: #1557b0;
+      --gold: #f59e0b;
+      --gold-glow: rgba(245, 158, 11, 0.45);
+      --dark-hero: #0f172a;
+      --text-main: #202124;
+      --text-muted: #5f6368;
+      --border: #dadce0;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --danger: #ea4335;
+      --success: #34a853;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Taille et ombre identiques au toast de fin de réunion (opti-meet-exit-card: 380px) */
+    .vote-card {
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      background: var(--card-bg);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(245, 158, 11, 0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: optiToastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes optiToastSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Header Base des Héros (Identique à l'extension) */
+    .hero-card-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .hero-brand-icon {
+      font-size: 22px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      color: #fbbf24;
+      filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.6));
+    }
+    .hero-header-titles {
+      display: flex;
+      flex-direction: column;
+    }
+    .hero-header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .hero-header-subtitle {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .hero-card-body {
+      padding: 18px 16px;
+    }
+
+    /* Badge Nom de la réunion (Identique à .opti-title-badge de l'extension) */
+    .opti-title-badge {
+      font-size: 12px;
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      word-break: break-word;
+    }
+    .opti-title-badge-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    /* ─── Étoiles & Animations (Exact RatingForm) ─── */
+    .stars-section {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .stars-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .stars-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 6px 0;
+    }
+    .star-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d1d5db;
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+      outline: none;
+      user-select: none;
+    }
+    .star-btn:hover {
+      transform: scale(1.28) rotate(-4deg);
+    }
+    .star-btn .material-icons-outlined {
+      font-size: 34px;
+      pointer-events: none;
+      transition: color 0.15s ease;
+    }
+    .star-btn.active {
+      color: #f59e0b;
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+      animation: heroStarPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .star-btn.hover-preview {
+      color: #f59e0b;
+    }
+
+    @keyframes heroStarPop {
+      0% { transform: scale(0.8); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+
+    .rating-feedback-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gold);
+      min-height: 18px;
+      margin-top: 4px;
+      transition: opacity 0.2s;
+    }
+
+    .hero-error-banner {
+      font-size: 12px;
+      color: var(--danger);
+      background: #fdf2f2;
+      border: 1px solid #fde8e8;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin: 6px 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      animation: heroShake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+    @keyframes heroShake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+      40%, 60% { transform: translate3d(3px, 0, 0); }
+    }
+
+    /* ─── Comment Textarea ─── */
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .google-textarea {
+      width: 100%;
+      min-height: 60px;
+      max-height: 140px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--text-main);
+      background: #ffffff;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .google-textarea:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+    .google-textarea::placeholder {
+      color: #9aa0a6;
+      font-size: 12px;
+    }
+
+    /* ─── Hero Details Collapsible (content.css) ─── */
+    .hero-details-divider {
+      position: relative;
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid #e8eaed;
+      display: flex;
+      flex-direction: column;
+    }
+    .hero-details-trigger {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      padding: 6px 14px;
+      margin: 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: 'Google Sans', 'Roboto', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: #5f6368;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+    .hero-details-trigger:hover {
+      background-color: #f1f3f4;
+      color: #202124;
+      border-color: #dadce0;
+    }
+    .hero-details-trigger.open {
+      background-color: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+    .hero-details-trigger .hero-details-icon {
+      font-size: 13px;
+      line-height: 1;
+      color: #f59e0b;
+    }
+    .hero-details-trigger .hero-chevron-icon {
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .hero-details-trigger.open .hero-chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    .hero-details-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.25s, margin-top 0.25s;
+      margin-top: 0;
+    }
+    .hero-details-panel.open {
+      max-height: 600px;
+      opacity: 1;
+      visibility: visible;
+      margin-top: 10px;
+    }
+
+    .help-banner {
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checklist-group {
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    .checklist-group-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #5f6368;
+      margin-bottom: 6px;
+    }
+    .checklist-options {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* ─── Chip Select Pills (Exact content.css lines 668-697) ─── */
+    .chip-select {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      border: 1px solid #dadce0;
+      background: #ffffff;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-main);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      box-sizing: border-box;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+    .chip-select:hover {
+      border-color: #f59e0b;
+      background-color: #fffbeb;
+      transform: translateY(-1px);
+    }
+    .chip-select.active {
+      background-color: #fef3c7;
+      border-color: #f59e0b;
+      color: #92400e;
+      font-weight: 500;
+      box-shadow: 0 0 0 1px #f59e0b inset;
+    }
+
+    /* ─── Hero Submit Button (Exact content.css) ─── */
+    .hero-submit-btn {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      padding: 11px 16px;
+      margin-top: 12px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+      outline: none;
+    }
+    .hero-submit-btn:hover {
+      transform: translateY(-1px);
+      border-color: #f59e0b;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    }
+    .hero-submit-btn:active {
+      transform: translateY(1px);
+    }
+    .hero-submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .hero-submit-btn::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+      transform: rotate(25deg);
+      transition: none;
+    }
+    .hero-submit-btn:hover::after {
+      left: 120%;
+      transition: left 0.6s ease-in-out;
+    }
+
+    /* ─── Privacy Note ─── */
+    .hero-privacy-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #5f6368;
+      text-align: center;
+      margin-top: 8px;
+      line-height: 1.3;
+    }
+    .hero-privacy-note .material-icons-outlined {
+      font-size: 13px;
+      color: #188038;
+      flex-shrink: 0;
+    }
+
+    /* ─── Status Views (Success / Already / Invalid) ─── */
+    .status-view {
+      text-align: center;
+      padding: 16px 4px;
+      display: none;
+      animation: optiToastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .status-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .status-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+    .promo-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 14px;
+    }
+    .promo-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 4px;
+    }
+    .promo-desc {
+      font-size: 11px;
+      color: #78350f;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="vote-card">
+    <!-- Header Base des Héros -->
+    <div class="hero-card-header">
+      <span class="hero-brand-icon">⚡</span>
+      <div class="hero-header-titles">
+        <h1 class="hero-header-title">Meeting Heroes</h1>
+        <p class="hero-header-subtitle">Évaluation a posteriori (100% anonyme)</p>
+      </div>
+    </div>
+
+    <div class="hero-card-body">
+      <!-- Badge Nom du Meet -->
+      <div class="opti-title-badge" id="meeting-title-badge">
+        <span class="material-icons-outlined" style="font-size: 15px; color: #fbbf24; flex-shrink: 0;">videocam</span>
+        <span class="opti-title-badge-title" id="meeting-title-text"><?= t ? t : 'Réunion Google Meet' ?></span>
+      </div>
+
+      <!-- Form View -->
+      <div id="view-form">
+
+        <div class="stars-section">
+          <div class="stars-label">Score de la mission :</div>
+          <div class="stars-container" id="stars-row">
+            <button type="button" class="star-btn" data-val="1" aria-label="1 étoile"><span class="material-icons-outlined">star</span></button>
+            <button type="button" class="star-btn" data-val="2" aria-label="2 étoiles"><span class="material-icons-outlined">star</span></button>
+            <button type="button" class="star-btn" data-val="3" aria-label="3 étoiles"><span class="material-icons-outlined">star</span></button>
+            <button type="button" class="star-btn" data-val="4" aria-label="4 étoiles"><span class="material-icons-outlined">star</span></button>
+            <button type="button" class="star-btn" data-val="5" aria-label="5 étoiles"><span class="material-icons-outlined">star</span></button>
+          </div>
+          <div class="rating-feedback-text" id="rating-text"></div>
+          <div class="hero-error-banner" id="rating-error">
+            <span class="material-icons-outlined" style="font-size: 16px;">error_outline</span>
+            <span>Choisis une note en étoiles pour continuer</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="comment-input">Le mot du héros :</label>
+          <textarea id="comment-input" class="google-textarea" placeholder="Un point fort à conserver ? Une idée pour rendre la prochaine 2x plus efficace ?"></textarea>
+        </div>
+
+        <!-- Section dépliante : Détails de la mission -->
+        <div class="hero-details-divider">
+          <button type="button" class="hero-details-trigger" id="toggle-details" aria-expanded="false">
+            <span class="hero-details-icon">⚡</span>
+            <span>Détails de la mission (optionnel)</span>
+            <span class="material-icons-outlined hero-chevron-icon">expand_more</span>
+          </button>
+
+          <div class="hero-details-panel" id="details-content">
+            <div class="help-banner" id="help-banner" style="display: none;">
+              <span class="material-icons-outlined" style="font-size: 16px; color: #f59e0b;">shield</span>
+              Aide l'organisateur à sauver la prochaine réunion !
+            </div>
+
+            <!-- Durée -->
+            <fieldset class="checklist-group">
+              <legend class="checklist-group-title">Durée</legend>
+              <div class="checklist-options" data-criterion="durationVal">
+                <button type="button" class="chip-select" data-val="perfect">Timing parfait ⏱️</button>
+                <button type="button" class="chip-select" data-val="too_long">Trop longue ⏳</button>
+                <button type="button" class="chip-select" data-val="too_short">Trop courte ⚡</button>
+              </div>
+            </fieldset>
+
+            <!-- Récurrence -->
+            <fieldset class="checklist-group">
+              <legend class="checklist-group-title">Récurrence</legend>
+              <div class="checklist-options" data-criterion="recurrenceVal">
+                <button type="button" class="chip-select" data-val="right_pace">Bonne fréquence 👍</button>
+                <button type="button" class="chip-select" data-val="too_frequent">Trop fréquente 🔄</button>
+                <button type="button" class="chip-select" data-val="rare">Rare / ponctuelle 📅</button>
+              </div>
+            </fieldset>
+
+            <!-- Ordre du jour -->
+            <fieldset class="checklist-group">
+              <legend class="checklist-group-title">Ordre du jour</legend>
+              <div class="checklist-options" data-criterion="agendaVal">
+                <button type="button" class="chip-select" data-val="clear">Objectif & cadrage clairs 🎯</button>
+                <button type="button" class="chip-select" data-val="partial">Ordre du jour partiel 📝</button>
+                <button type="button" class="chip-select" data-val="no_agenda">Pas d’ordre du jour ❓</button>
+              </div>
+            </fieldset>
+
+            <!-- Efficacité -->
+            <fieldset class="checklist-group">
+              <legend class="checklist-group-title">Efficacité</legend>
+              <div class="checklist-options" data-criterion="efficiencyVal">
+                <button type="button" class="chip-select" data-val="productive">Échanges productifs 💡</button>
+                <button type="button" class="chip-select" data-val="actionable">Décisions & plan d’action concrets 🚀</button>
+                <button type="button" class="chip-select" data-val="off_track">Digressions / hors-sujet 🌀</button>
+              </div>
+            </fieldset>
+
+            <!-- Format -->
+            <fieldset class="checklist-group">
+              <legend class="checklist-group-title">Format</legend>
+              <div class="checklist-options" data-criterion="formatVal">
+                <button type="button" class="chip-select" data-val="good_format">Le format visio était idéal 💻</button>
+                <button type="button" class="chip-select" data-val="email_better">Un message asynchrone aurait suffi ✉️</button>
+                <button type="button" class="chip-select" data-val="in_person_better">Plus efficace en vrai / face à face 🤝</button>
+              </div>
+            </fieldset>
+          </div>
+        </div>
+
+        <button type="button" class="hero-submit-btn" id="btn-submit">Envoyer mon super-avis</button>
+
+        <div class="hero-privacy-note">
+          <span class="material-icons-outlined">lock</span>
+          <span>Avis 100% anonyme • Aucune donnée personnelle stockée</span>
+        </div>
+      </div>
+
+      <!-- Success View -->
+      <div id="view-success" class="status-view">
+        <span class="material-icons-outlined status-icon" style="color: var(--success);">verified</span>
+        <h2 class="status-title">Mission accomplie ! 🦸</h2>
+        <p class="status-desc">Ton super-avis a été transmis anonymement.<br>Merci de sauver nos réunions !</p>
+        <div class="promo-box">
+          <div class="promo-title">🦸 Deviens un Meeting Hero à chaque appel !</div>
+          <p class="promo-desc">Évalue directement dans Google Meet en 1 clic sans avoir besoin d’un lien et retrouve ton historique.</p>
+          <a href="https://chromewebstore.google.com/detail/ofbfcnphgmibhdleifkegljmlgpmdlgp" target="_blank" rel="noopener noreferrer" class="btn-cta">
+            <span>Installer l'extension Chrome</span>
+            <span class="material-icons-outlined" style="font-size: 15px;">open_in_new</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Already Submitted View -->
+      <div id="view-already" class="status-view">
+        <span class="material-icons-outlined status-icon" style="color: var(--gold);">shield</span>
+        <h2 class="status-title">Tu as déjà sauvé cette réunion ! 🦸</h2>
+        <p class="status-desc">Ton avis héroïque a déjà été enregistré pour cette mission.<br>Installe l'extension Chrome pour suivre les consensus de tes équipes.</p>
+        <a href="https://chromewebstore.google.com/detail/ofbfcnphgmibhdleifkegljmlgpmdlgp" target="_blank" rel="noopener noreferrer" class="btn-cta">
+          <span>Installer l'extension Chrome</span>
+          <span class="material-icons-outlined" style="font-size: 15px;">open_in_new</span>
+        </a>
+      </div>
+
+      <!-- Invalid Link View -->
+      <div id="view-invalid" class="status-view">
+        <span class="material-icons-outlined status-icon" style="color: var(--danger);">error_outline</span>
+        <h2 class="status-title">Lien de vote invalide</h2>
+        <p class="status-desc">Ce lien de vote semble corrompu ou incomplet.<br>Rapproche-toi de l’organisateur de ta réunion.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var ratingLabels = [
+        "",
+        "1 - Très insatisfaisant 😕",
+        "2 - Plutôt insatisfaisant 😐",
+        "3 - Moyen / Neutre 🙂",
+        "4 - Plutôt satisfaisant 😊",
+        "5 - Exceptionnel ! 🦸"
+      ];
+      var selectedRating = 0;
+      var selectedCriteria = {};
+      var meetingHash = "";
+
+      var viewForm = document.getElementById("view-form");
+      var viewSuccess = document.getElementById("view-success");
+      var viewAlready = document.getElementById("view-already");
+      var viewInvalid = document.getElementById("view-invalid");
+
+      var starButtons = document.querySelectorAll(".star-btn");
+      var ratingText = document.getElementById("rating-text");
+      var ratingError = document.getElementById("rating-error");
+      var commentInput = document.getElementById("comment-input");
+      var toggleDetailsBtn = document.getElementById("toggle-details");
+      var detailsContent = document.getElementById("details-content");
+      var helpBanner = document.getElementById("help-banner");
+      var submitBtn = document.getElementById("btn-submit");
+
+      var meetingTitleBadge = document.getElementById("meeting-title-badge");
+      var meetingTitleText = document.getElementById("meeting-title-text");
+
+      var params = new URLSearchParams(window.location.search);
+      meetingHash = params.get("m") || "<?= m ?>" || "";
+      var rawTitle = params.get("t") || "<?= t ?>" || "";
+
+      // Si le template n'a pas été évalué ou est vide
+      if (!meetingHash || meetingHash.indexOf("<" + "%=") === 0) {
+        if (!params.get("m")) {
+          showView("invalid");
+          return;
+        }
+        meetingHash = params.get("m");
+      }
+
+      // Affichage du nom du Meet (avec fallback garanti)
+      if (rawTitle && rawTitle.indexOf("<" + "%=") !== 0) {
+        meetingTitleText.textContent = rawTitle;
+      }
+      if (!meetingTitleText.textContent.trim() || meetingTitleText.textContent.indexOf("<" + "%=") === 0) {
+        meetingTitleText.textContent = "Réunion Google Meet";
+      }
+      meetingTitleBadge.style.display = "flex";
+      // Nettoyage de tout ancien cache local résiduel : la Google Sheet fait autorité
+      try {
+        localStorage.removeItem("opti_vote_" + meetingHash);
+      } catch (e) {}
+
+      var isAlreadyVoted = "<?= alreadyVoted ?>";
+      if (isAlreadyVoted === "true") {
+        showView("already");
+        return;
+      }
+
+      // Étoiles avec survol interactif et animation
+      starButtons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var val = parseInt(btn.getAttribute("data-val"), 10);
+          setRating(val);
+        });
+        btn.addEventListener("mouseenter", function() {
+          var val = parseInt(btn.getAttribute("data-val"), 10);
+          previewStars(val);
+        });
+      });
+
+      document.getElementById("stars-row").addEventListener("mouseleave", function() {
+        highlightStars(selectedRating);
+      });
+
+      function setRating(val) {
+        selectedRating = val;
+        ratingError.style.display = "none";
+        highlightStars(val);
+        ratingText.textContent = ratingLabels[val] || "";
+
+        // Auto-ouverture des détails si note <= 3
+        if (val > 0 && val <= 3) {
+          openDetails();
+          helpBanner.style.display = "flex";
+        } else {
+          helpBanner.style.display = "none";
+        }
+      }
+
+      function previewStars(val) {
+        starButtons.forEach(function(btn) {
+          var bVal = parseInt(btn.getAttribute("data-val"), 10);
+          if (bVal <= val) {
+            btn.classList.add("hover-preview");
+          } else {
+            btn.classList.remove("hover-preview");
+          }
+        });
+      }
+
+      function highlightStars(val) {
+        starButtons.forEach(function(btn) {
+          btn.classList.remove("hover-preview");
+          var bVal = parseInt(btn.getAttribute("data-val"), 10);
+          if (bVal <= val) {
+            btn.classList.add("active");
+          } else {
+            btn.classList.remove("active");
+          }
+        });
+      }
+
+      // Volet accordéon
+      function openDetails() {
+        toggleDetailsBtn.classList.add("open");
+        toggleDetailsBtn.setAttribute("aria-expanded", "true");
+        detailsContent.classList.add("open");
+      }
+
+      toggleDetailsBtn.addEventListener("click", function() {
+        var isOpen = detailsContent.classList.contains("open");
+        if (isOpen) {
+          toggleDetailsBtn.classList.remove("open");
+          toggleDetailsBtn.setAttribute("aria-expanded", "false");
+          detailsContent.classList.remove("open");
+        } else {
+          openDetails();
+        }
+      });
+
+      // Chips de critères (radiogroup pill)
+      document.querySelectorAll(".checklist-options").forEach(function(container) {
+        var criterion = container.getAttribute("data-criterion");
+        container.querySelectorAll(".chip-select").forEach(function(chip) {
+          chip.addEventListener("click", function() {
+            var val = chip.getAttribute("data-val");
+            if (selectedCriteria[criterion] === val) {
+              delete selectedCriteria[criterion];
+              chip.classList.remove("active");
+            } else {
+              selectedCriteria[criterion] = val;
+              container.querySelectorAll(".chip-select").forEach(function(c) { c.classList.remove("active"); });
+              chip.classList.add("active");
+            }
+          });
+        });
+      });
+
+      // Soumission
+      submitBtn.addEventListener("click", function() {
+        if (selectedRating === 0) {
+          ratingError.style.display = "flex";
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "... ⚡";
+
+        generateVoterToken(meetingHash).then(function(voterToken) {
+          var payload = {
+            action: "submit_evaluation",
+            meetingHash: meetingHash,
+            voterToken: voterToken,
+            participant_count: 1,
+            rating: selectedRating,
+            comment: commentInput.value.trim(),
+            duration_feedback: selectedCriteria.durationVal || "",
+            recurrence_feedback: selectedCriteria.recurrenceVal || "",
+            agenda_feedback: selectedCriteria.agendaVal || "",
+            efficiency_feedback: selectedCriteria.efficiencyVal || "",
+            format_feedback: selectedCriteria.formatVal || ""
+          };
+
+          if (typeof google !== "undefined" && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(handleSubmissionResponse)
+              .withFailureHandler(handleSubmissionError)
+              .submitEvaluationWeb(payload);
+          } else {
+            fetch("https://script.google.com/a/macros/adeo.com/s/AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW/exec", {
+              method: "POST",
+              headers: { "Content-Type": "text/plain" },
+              body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(handleSubmissionResponse)
+            .catch(handleSubmissionError);
+          }
+        });
+      });
+
+      function handleSubmissionResponse(res) {
+        if (res && res.status === "already_submitted") {
+          showView("already");
+          return;
+        }
+        showView("success");
+      }
+
+      function handleSubmissionError(err) {
+        console.error("Meeting Heroes: Erreur soumission:", err);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Envoyer mon super-avis";
+        alert("Une erreur est survenue lors de l'envoi. Veuillez réessayer.");
+      }
+
+      function showView(name) {
+        viewForm.style.display = "none";
+        viewSuccess.style.display = "none";
+        viewAlready.style.display = "none";
+        viewInvalid.style.display = "none";
+
+        if (name === "invalid") {
+          meetingTitleBadge.style.display = "none";
+          viewInvalid.style.display = "block";
+        } else {
+          meetingTitleBadge.style.display = "flex";
+          if (name === "success") viewSuccess.style.display = "block";
+          else if (name === "already") viewAlready.style.display = "block";
+          else viewForm.style.display = "block";
+        }
+      }
+
+      function generateVoterToken(hash) {
+        return new Promise(function(resolve) {
+          var salt = "";
+          try {
+            salt = localStorage.getItem("optimeeting_voter_salt");
+            if (!salt) {
+              var arr = new Uint8Array(16);
+              crypto.getRandomValues(arr);
+              salt = Array.from(arr).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+              localStorage.setItem("optimeeting_voter_salt", salt);
+            }
+          } catch (e) {
+            salt = "standalone_salt_fallback";
+          }
+
+          var raw = salt + "_" + hash;
+          var encoder = new TextEncoder();
+          crypto.subtle.digest("SHA-256", encoder.encode(raw)).then(function(buf) {
+            var token = Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+            resolve(token);
+          }).catch(function() {
+            resolve("token_" + Math.random().toString(36));
+          });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -34,4 +34,27 @@ describe('Integration Test: Crypto Hashing & UTC Timezone Consistency', () => {
 
     expect(hashDay1).not.toBe(hashDay2);
   });
+
+  it('generates a secure, non-guessable a posteriori vote link with signature', async () => {
+    const { getVoteLink } = await import('../src/utils/CryptoHelper');
+    const link = await getVoteLink('abc-defg-hij', Date.UTC(2026, 8, 10, 14, 0, 0));
+    expect(link).toContain('https://script.google.com/a/macros/adeo.com/s/');
+    expect(link).toContain('?m=');
+    expect(link).toContain('&key=');
+
+    const url = new URL(link);
+    const m = url.searchParams.get('m');
+    const key = url.searchParams.get('key');
+    expect(m).toHaveLength(64);
+    expect(key).toHaveLength(16);
+
+    // Verify key signature is reproducible
+    const expectedKey = (await hashMeetingId(`vote_${m}`)).slice(0, 16);
+    expect(key).toBe(expectedKey);
+
+    // Verify title param encoding
+    const linkWithTitle = await getVoteLink('abc-defg-hij', Date.UTC(2026, 8, 10, 14, 0, 0), 'Sync Hebdo ADEO ⚡');
+    expect(linkWithTitle).toContain('&t=Sync%20Hebdo%20ADEO%20%E2%9A%A1');
+  });
 });
+

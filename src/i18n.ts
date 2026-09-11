@@ -101,6 +101,9 @@ export const translations = {
     exitModalTitle: 'La réunion est terminée ! ⏱️',
     exitModalSubtitle: 'Donnez votre super-avis en 10 secondes (100% anonyme)',
     silenceToday: 'Ne plus me demander aujourd’hui',
+    reinviteHeroes: 'Réinvoquer les héros : partager le lien de vote',
+    reinviteHeroesShort: 'Lien de vote héros',
+    reinviteCopiedToast: 'Lien de vote héros copié ! 📋',
   },
 
   // ─── English (International) ────────────────────────────────────────────────
@@ -172,6 +175,9 @@ export const translations = {
     exitModalTitle: 'Meeting has ended! ⏱️',
     exitModalSubtitle: 'Give your super-review in 10 seconds (100% anonymous)',
     silenceToday: 'Don’t ask me again today',
+    reinviteHeroes: 'Re-invoke heroes: share vote link',
+    reinviteHeroesShort: 'Hero vote link',
+    reinviteCopiedToast: 'Hero vote link copied! 📋',
   },
 
   // ─── Español (Spain) ────────────────────────────────────────────────────────
@@ -243,6 +249,9 @@ export const translations = {
     exitModalTitle: '¡La reunión ha terminado! ⏱️',
     exitModalSubtitle: 'Da tu súper-opinión en 10 segundos (100% anónimo)',
     silenceToday: 'No volver a preguntarme hoy',
+    reinviteHeroes: 'Reinvocar a los héroes: compartir enlace de votación',
+    reinviteHeroesShort: 'Enlace votación héroe',
+    reinviteCopiedToast: '¡Enlace de votación copiado! 📋',
   },
 
   // ─── Português (Portugal) ───────────────────────────────────────────────────
@@ -314,6 +323,9 @@ export const translations = {
     exitModalTitle: 'A reunião terminou! ⏱️',
     exitModalSubtitle: 'Dá a tua super-avaliação em 10 segundos (100% anónima)',
     silenceToday: 'Não perguntar novamente hoje',
+    reinviteHeroes: 'Reinvocar os heróis: partilhar ligação de voto',
+    reinviteHeroesShort: 'Ligação voto herói',
+    reinviteCopiedToast: 'Ligação de voto copiada! 📋',
   },
 
   // ─── Português do Brasil (Brazil) ───────────────────────────────────────────
@@ -385,6 +397,9 @@ export const translations = {
     exitModalTitle: 'A reunião terminou! ⏱️',
     exitModalSubtitle: 'Dê sua superavaliação em 10 segundos (100% anônima)',
     silenceToday: 'Não perguntar novamente hoje',
+    reinviteHeroes: 'Reinvocar os heróis: compartilhar link de votação',
+    reinviteHeroesShort: 'Link votação herói',
+    reinviteCopiedToast: 'Link de votação copiado! 📋',
   },
 
   // ─── Italiano (Italy) ───────────────────────────────────────────────────────
@@ -456,6 +471,9 @@ export const translations = {
     exitModalTitle: 'La riunione è terminata! ⏱️',
     exitModalSubtitle: 'Dai la tua super-recensione in 10 secondi (100% anonima)',
     silenceToday: 'Non chiedermelo più oggi',
+    reinviteHeroes: 'Riconvoca gli eroi: condividi link di voto',
+    reinviteHeroesShort: 'Link voto eroe',
+    reinviteCopiedToast: 'Link di voto copiato! 📋',
   },
 
   // ─── Polski (Poland) ────────────────────────────────────────────────────────
@@ -527,6 +545,9 @@ export const translations = {
     exitModalTitle: 'Spotkanie dobiegło końca! ⏱️',
     exitModalSubtitle: 'Wystaw swoją super-opinię w 10 sekund (100% anonimowo)',
     silenceToday: 'Nie pytaj mnie dzisiaj ponownie',
+    reinviteHeroes: 'Przyzwij bohaterów ponownie: udostępnij link do głosowania',
+    reinviteHeroesShort: 'Link do głosu bohatera',
+    reinviteCopiedToast: 'Link do głosowania skopiowany! 📋',
   },
 
   // ─── Українська (Ukraine) ────────────────────────────────────────────────────
@@ -598,6 +619,9 @@ export const translations = {
     exitModalTitle: 'Зустріч завершилась! ⏱️',
     exitModalSubtitle: 'Залиште супер-відгук за 10 секунд (100% анонімно)',
     silenceToday: 'Не запитувати більше сьогодні',
+    reinviteHeroes: 'Повторно покликати героїв: поділитися посиланням для голосування',
+    reinviteHeroesShort: 'Посилання голосування героя',
+    reinviteCopiedToast: 'Посилання для голосування скопійовано! 📋',
   },
 
   // ─── Română (Romania) ────────────────────────────────────────────────────────
@@ -669,6 +693,9 @@ export const translations = {
     exitModalTitle: 'Ședința s-a încheiat! ⏱️',
     exitModalSubtitle: 'Dă super-recenzia ta în 10 secunde (100% anonim)',
     silenceToday: 'Nu mă mai întreba astăzi',
+    reinviteHeroes: 'Recheamă eroii: distribuie linkul de vot',
+    reinviteHeroesShort: 'Link vot erou',
+    reinviteCopiedToast: 'Linkul de vot a fost copiat! 📋',
   }
 };
 

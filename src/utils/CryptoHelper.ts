@@ -20,17 +20,35 @@ export async function hashMeetingId(rawId: string): Promise<string> {
 export async function getAnonymousVoterToken(meetingHash: string): Promise<string> {
   let salt = '';
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const res = await chrome.storage.local.get('optimeeting_voter_salt');
-    if (res && res.optimeeting_voter_salt) {
-      salt = String(res.optimeeting_voter_salt);
-    } else {
-      salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map((b) => b.toString(16).padStart(2, '0')).join('');
-      await chrome.storage.local.set({ optimeeting_voter_salt: salt });
-    }
-  } else {
-    salt = 'standalone-salt';
+    try {
+      const res = await chrome.storage.local.get('optimeeting_voter_salt');
+      if (res && res.optimeeting_voter_salt) {
+        salt = String(res.optimeeting_voter_salt);
+      } else {
+        salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map((b) => b.toString(16).padStart(2, '0')).join('');
+        await chrome.storage.local.set({ optimeeting_voter_salt: salt });
+      }
+    } catch {}
   }
+
+  if (!salt) {
+    try {
+      const local = typeof localStorage !== 'undefined' ? localStorage.getItem('optimeeting_voter_salt') : null;
+      if (local) {
+        salt = local;
+      } else {
+        salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map((b) => b.toString(16).padStart(2, '0')).join('');
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('optimeeting_voter_salt', salt);
+        }
+      }
+    } catch {
+      salt = 'standalone-salt';
+    }
+  }
+
   return hashMeetingId(`${salt}_${meetingHash}`);
 }
 
@@ -53,4 +71,18 @@ export function parseMeetingId(pathname: string): string {
   const match = (pathname || '').match(/\/([a-z]{3}-[a-z]{4}-[a-z]{3})(?:\/|\?|$)/i);
   return match ? match[1].toLowerCase() : '';
 }
+
+export const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/adeo.com/s/AKfycbwDpEnI1J8Oya9c1cOCsiYM3bdWRaPMJ29Pm_hcarZ2QmjrFqb591uEgbAoazb_hrWW/exec';
+
+/**
+ * Builds the secure a posteriori vote URL for Google Apps Script WebApp.
+ */
+export async function getVoteLink(rawMeetingId: string, startTime?: number, title?: string): Promise<string> {
+  const occurrence = getOccurrenceId(rawMeetingId, startTime);
+  const meetingHash = await hashMeetingId(occurrence);
+  const signature = (await hashMeetingId(`vote_${meetingHash}`)).slice(0, 16);
+  const titleParam = title ? `&t=${encodeURIComponent(title)}` : '';
+  return `${APPS_SCRIPT_URL}?m=${meetingHash}&key=${signature}${titleParam}`;
+}
+
 

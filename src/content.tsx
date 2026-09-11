@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RatingForm } from './components/RatingForm';
 import { StorageHelper } from './utils/StorageHelper';
 import { SheetsHelper } from './utils/SheetsHelper';
-import { hashMeetingId, getOccurrenceId, parseMeetingId } from './utils/CryptoHelper';
+import { hashMeetingId, getOccurrenceId, parseMeetingId, getVoteLink } from './utils/CryptoHelper';
 import type { ActiveMeetingState, Meeting } from './utils/StorageHelper';
 import { t } from './i18n';
 
@@ -501,13 +501,43 @@ function ExitOverlayContainer({ onClose, targetMeeting }: { onClose: () => void;
       />
 
       {!isSubmitted && (
-        <button
-          type="button"
-          onClick={handleSilenceToday}
-          className="opti-silence-today-btn"
-        >
-          {t.silenceToday}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={async () => {
+              const rawId = activeMeeting?.id || meetingId;
+              if (rawId) {
+                const link = await getVoteLink(rawId, activeMeeting?.startTime || meetingStartTime, activeMeeting?.title);
+                try {
+                  await navigator.clipboard.writeText(link);
+                } catch {
+                  const el = document.createElement('textarea');
+                  el.value = link;
+                  document.body.appendChild(el);
+                  el.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(el);
+                }
+                showCopyToast(t.reinviteCopiedToast);
+              }
+            }}
+            className="opti-reinvite-btn"
+            title={t.reinviteHeroes}
+          >
+            <span className="material-icons-outlined" style={{ fontSize: '15px', color: '#f59e0b' }}>
+              bolt
+            </span>
+            <span>{t.reinviteHeroes}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSilenceToday}
+            className="opti-silence-today-btn"
+          >
+            {t.silenceToday}
+          </button>
+        </>
       )}
     </div>
   );
@@ -709,6 +739,9 @@ const updateTogglePosition = (toggle: HTMLElement): boolean => {
     targetLeft = Math.round(maxRight + 12);
   }
 
+  targetLeft = Math.max(16, Math.min(targetLeft, window.innerWidth - 180));
+  targetTop = Math.max(8, Math.min(targetTop, 40));
+
   // Évite tout recalcul si déjà positionné de manière stable (seuil 6px)
   if (lastPositionedX !== -1 && Math.abs(targetLeft - lastPositionedX) <= 6 && Math.abs(targetTop - lastPositionY) <= 3) {
     return true;
@@ -732,7 +765,19 @@ const updateTogglePosition = (toggle: HTMLElement): boolean => {
 // ─── Injection Anchors ────────────────────────────────────────────────────────
 
 const injectReactUI = () => {
-  if (document.getElementById('opti-meet-sidebar-ctrl')) return;
+  let existingToggle = document.getElementById('opti-meet-toggle-btn');
+  let existingSidebar = document.getElementById('opti-meet-sidebar-ctrl');
+  if (existingToggle && existingSidebar) {
+    if (existingToggle.parentElement !== document.body) {
+      document.body.appendChild(existingToggle);
+    }
+    if (existingSidebar.parentElement !== document.body) {
+      document.body.appendChild(existingSidebar);
+    }
+    return;
+  }
+  if (existingToggle && !existingSidebar) existingToggle.remove();
+  if (existingSidebar && !existingToggle) existingSidebar.remove();
 
   // 1. Injects Header Button Widget
   const toggle = document.createElement('button');
@@ -962,33 +1007,40 @@ const init = async () => {
   }
 
   injectFonts();
-  updateMeetingId();
 
-  // Si on est déjà sur l'écran de fin (ex: page rechargée après avoir quitté)
-  if (checkHasLeft()) {
-    await injectExitOverlay(false);
-    return;
-  }
+  // Boucle de cycle de vie résiliente aux SPA / redirections Google Meet
+  const checkLifecycle = async () => {
+    const prevMeetingId = meetingId;
+    updateMeetingId();
 
-  if (!meetingId) {
-    return;
-  }
+    if (!meetingId) {
+      const toggle = document.getElementById('opti-meet-toggle-btn');
+      if (toggle) toggle.classList.remove('visible');
+      return;
+    }
 
-  meetingStartTime = Date.now();
-  exitPollDismissed = false;
-  await syncMeetingState();
+    if (meetingId !== prevMeetingId) {
+      meetingStartTime = Date.now();
+      exitPollDismissed = false;
+      callEverStarted = false;
+      syncMeetingState().catch(() => {});
+    }
 
-  injectReactUI();
+    // Si on est sur l'écran de fin (appel terminé)
+    if (checkHasLeft()) {
+      const toggle = document.getElementById('opti-meet-toggle-btn');
+      if (toggle) toggle.classList.remove('visible');
+      await injectExitOverlay(false).catch(() => {});
+      return;
+    }
 
-  setInterval(syncMeetingState, 5000);
+    // Assure l'injection de l'UI React (bouton header + drawer)
+    injectReactUI();
 
-  // Surveille l'état d'appel et positionne le bouton dans l'en-tête
-  setInterval(() => {
-    const active = isCallActive();
     const toggle = document.getElementById('opti-meet-toggle-btn');
     if (!toggle) return;
 
-    if (active) {
+    if (isCallActive()) {
       const positioned = updateTogglePosition(toggle);
       if (positioned) {
         toggle.classList.add('visible');
@@ -996,14 +1048,42 @@ const init = async () => {
     } else {
       toggle.classList.remove('visible');
     }
+  };
+
+  // Exécution initiale immédiate
+  checkLifecycle().catch(() => {});
+
+  // Surveillance SPA via popstate et polling 500ms
+  window.addEventListener('popstate', () => {
+    checkLifecycle().catch(() => {});
+  });
+
+  try {
+    const wrapHistory = (type: 'pushState' | 'replaceState') => {
+      const orig = history[type];
+      history[type] = function (data: any, unused: string, url?: string | URL | null) {
+        const res = orig.call(this, data, unused, url);
+        window.dispatchEvent(new Event('opti_locationchange'));
+        return res;
+      };
+    };
+    wrapHistory('pushState');
+    wrapHistory('replaceState');
+    window.addEventListener('opti_locationchange', () => {
+      checkLifecycle().catch(() => {});
+    });
+  } catch {}
+
+  setInterval(() => {
+    checkLifecycle().catch(() => {});
   }, 500);
 
-  // Surveille la sortie d'appel en continu (sans forcer, pour respecter les dismiss et silences)
-  setInterval(async () => {
-    if (checkHasLeft()) {
-      await injectExitOverlay(false);
+  // Synchronisation périodique de l'état (toutes les 5s)
+  setInterval(() => {
+    if (meetingId && isCallActive()) {
+      syncMeetingState().catch(() => {});
     }
-  }, 500);
+  }, 5000);
 
   // Capture directe du clic sur le bouton rouge "Quitter l'appel"
   document.addEventListener(
@@ -1020,9 +1100,9 @@ const init = async () => {
           participantCount: metrics.participants,
           isHost: metrics.isHost,
           endedAt: Date.now(),
-        });
+        }).catch(() => {});
         setTimeout(() => {
-          injectExitOverlay(false);
+          injectExitOverlay(false).catch(() => {});
         }, 300);
       }
     },
@@ -1040,10 +1120,10 @@ const init = async () => {
         participantCount: metrics.participants,
         isHost: metrics.isHost,
         endedAt: Date.now(),
-      });
-      const active = await StorageHelper.getActiveMeeting();
+      }).catch(() => {});
+      const active = await StorageHelper.getActiveMeeting().catch(() => null);
       if (active && active.id === meetingId) {
-        await StorageHelper.saveActiveMeeting(null);
+        await StorageHelper.saveActiveMeeting(null).catch(() => {});
       }
     }
   });
