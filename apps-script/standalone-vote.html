@@ -717,10 +717,13 @@
         localStorage.removeItem("opti_vote_" + meetingHash);
       } catch (e) {}
 
-      var isAlreadyVoted = "<?= alreadyVoted ?>";
-      if (isAlreadyVoted === "true") {
-        showView("already");
-        return;
+      // Vérification asynchrone non-bloquante pour affichage instantané du formulaire
+      if (typeof google !== "undefined" && google.script && google.script.run && meetingHash) {
+        google.script.run
+          .withSuccessHandler(function(already) {
+            if (already) showView("already");
+          })
+          .checkAlreadyVoted(meetingHash);
       }
 
       // Étoiles avec survol interactif et animation

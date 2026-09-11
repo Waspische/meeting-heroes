@@ -17,34 +17,30 @@ function doGet(e) {
   }
 
   var template = HtmlService.createTemplateFromFile('standalone-vote');
-  var m = (e && e.parameter && e.parameter.m) || '';
-  template.m = m;
+  template.m = (e && e.parameter && e.parameter.m) || '';
   template.key = (e && e.parameter && e.parameter.key) || '';
   template.t = (e && e.parameter && e.parameter.t) || '';
-
-  var alreadyVoted = false;
-  try {
-    var activeEmail = Session.getActiveUser().getEmail();
-    if (activeEmail && m) {
-      var voterToken = computeServerToken(activeEmail, m);
-      var sheet = getOrCreateEvaluationsSheet();
-      var values = sheet.getDataRange().getValues();
-      for (var i = 1; i < values.length; i++) {
-        var rowHash = values[i][1];
-        var rowToken = values[i][11];
-        if (rowHash === m && rowToken === voterToken) {
-          alreadyVoted = true;
-          break;
-        }
-      }
-    }
-  } catch (err) {}
-  template.alreadyVoted = alreadyVoted;
 
   return template.evaluate()
     .setTitle('Meeting Heroes — Évaluation A Posteriori')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function checkAlreadyVoted(meetingHash) {
+  try {
+    var activeEmail = Session.getActiveUser().getEmail();
+    if (!activeEmail || !meetingHash) return false;
+    var voterToken = computeServerToken(activeEmail, meetingHash);
+    var sheet = getOrCreateEvaluationsSheet();
+    var values = sheet.getDataRange().getValues();
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][1] === meetingHash && values[i][11] === voterToken) {
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
 }
 
 function doPost(e) {
